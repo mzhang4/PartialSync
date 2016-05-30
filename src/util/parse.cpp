@@ -1,8 +1,6 @@
-#ifndef PARSE_HPP
-#define PARSE_HPP
+#include "parse.hpp"
 
-#include <vector>
-#include <string>
+namespace psync {
 
 std::vector<unsigned char> ParseHex(const std::string& str)
 {
@@ -16,4 +14,4 @@ std::vector<unsigned char> ParseHex(const std::string& str)
 	return vch;
 }
 
-#endif
+}

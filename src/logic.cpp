@@ -2,6 +2,8 @@
 #include "util/murmurhash3.hpp"
 #include "util/parse.hpp"
 
+namespace psync {
+
 static const size_t N_HASHCHECK = 11;
 
 Logic::Logic(size_t expectedNumEntries)
@@ -38,9 +40,7 @@ Logic::removeSyncNode(std::string prefix)
 	}
 }
 
-
-
-
+}
 
 int main() {
 	;

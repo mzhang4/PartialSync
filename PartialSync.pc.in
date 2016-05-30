@@ -1,0 +1,10 @@
+prefix=@PREFIX@
+libdir=@LIBDIR@
+includedir=@INCLUDEDIR@
+
+Name: PartialSync
+Description: PartialSync library
+Version: @VERSION@
+Libs: -L${libdir} -lPartialSync
+Cflags: -I${includedir}
+

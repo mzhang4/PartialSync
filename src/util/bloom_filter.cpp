@@ -9,6 +9,8 @@
 #include <limits>
 #include <cstdlib>
 
+namespace psync {
+
 bloom_parameters::bloom_parameters()
 : minimum_size(1)
 , maximum_size(std::numeric_limits<unsigned int>::max())
@@ -67,18 +69,18 @@ bloom_filter::bloom_filter()
 , salt_count_(0)
 , table_size_(0)
 , raw_table_size_(0)
-, projected_element_count_(0)
+//, projected_element_count_(0)
 , inserted_element_count_(0)
 , random_seed_(0)
-, desired_false_positive_probability_(0.0)
+//, desired_false_positive_probability_(0.0)
 {}
 
 bloom_filter::bloom_filter(const bloom_parameters& p)
 : bit_table_(0)
-, projected_element_count_(p.projected_element_count)
+//, projected_element_count_(p.projected_element_count)
 , inserted_element_count_(0)
 , random_seed_((p.random_seed * 0xA5A5A5A5) + 1)
-, desired_false_positive_probability_(p.false_positive_probability)
+//, desired_false_positive_probability_(p.false_positive_probability)
 {
   salt_count_ = p.optimal_parameters.number_of_hashes;
   table_size_ = p.optimal_parameters.table_size;
@@ -208,6 +210,8 @@ bloom_filter::compute_indices(const bloom_type& hash, std::size_t& bit_index, st
 {
   bit_index = hash % table_size_;
   bit = bit_index % bits_per_char;
+}
+
 }
 
 /*#include <cassert>

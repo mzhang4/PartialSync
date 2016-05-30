@@ -1,6 +1,8 @@
 #include "murmurhash3.hpp"
 
-inline uint32_t ROTL32 ( uint32_t x, int8_t r )
+namespace psync {
+
+uint32_t ROTL32 ( uint32_t x, int8_t r )
 {
   return (x << r) | (x >> (32 - r));
 }
@@ -53,4 +55,6 @@ uint32_t MurmurHash3(uint32_t nHashSeed, const std::vector<unsigned char>& vData
   h1 ^= h1 >> 16;
 
   return h1;
+}
+
 }

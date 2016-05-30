@@ -6,6 +6,8 @@
 #include <vector>
 #include <string>
 
+namespace psync {
+
 class HashTableEntry
 {
 public:
@@ -48,5 +50,7 @@ private:
   void _insert(int plusOrMinus, uint32_t key);
   std::vector<HashTableEntry> hashTable;
 };
+
+}
 
 #endif

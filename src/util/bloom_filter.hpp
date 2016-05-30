@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 
+namespace psync {
+
 static const std::size_t bits_per_char = 0x08;
 static const unsigned char bit_mask[bits_per_char] = {
 													     0x01,  //00000001
@@ -78,10 +80,12 @@ private:
   unsigned int            salt_count_;
   unsigned int            table_size_;
   unsigned int            raw_table_size_;
-  unsigned int            projected_element_count_;
+  // unsigned int            projected_element_count_;
   unsigned int            inserted_element_count_;
   unsigned long long int  random_seed_;
-  double                  desired_false_positive_probability_;
+  // double                  desired_false_positive_probability_;
 };
+
+}
 
 #endif

@@ -3,6 +3,8 @@
 #include "iblt.hpp"
 #include "murmurhash3.hpp"
 
+namespace psync {
+
 static const size_t N_HASH = 3;
 static const size_t N_HASHCHECK = 11;
 
@@ -161,6 +163,8 @@ IBLT::DumpTable() const
   }
 
   return result.str();
+}
+
 }
 
 /*#include <iostream>

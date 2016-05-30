@@ -4,6 +4,8 @@
 #include "util/iblt.hpp"
 #include <map>
 
+namespace psync {
+
 class Logic {
 public:
 	Logic(size_t _expectedNumEntries);
@@ -42,5 +44,7 @@ private:
 	std::map <std::string, uint32_t> m_prefix2hash; 
 	std::map <uint32_t, std::string> m_hash2prefix;
 };
+
+}
 
 #endif
