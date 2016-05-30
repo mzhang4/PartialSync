@@ -1,5 +1,5 @@
 #include "murmurhash3.hpp"
-#include <inttypes.h>
+#include <string>
 
 namespace psync {
 
