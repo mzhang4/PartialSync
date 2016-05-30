@@ -11,7 +11,7 @@ namespace psync {
 class HashTableEntry
 {
 public:
-  uint32_t count;
+  int32_t count;
   uint32_t keySum;
   uint32_t keyCheck;
 

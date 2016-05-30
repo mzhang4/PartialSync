@@ -58,7 +58,7 @@ IBLT::IBLT(size_t _expectedNumEntries, std::vector <uint32_t> values)
 
   assert(hashTable.size() == 3*values.size());
 
-  for (int i = 0; i < hashTable.size(); i++) {
+  for (size_t i = 0; i < hashTable.size(); i++) {
     HashTableEntry& entry = hashTable.at(i);
     entry.count = values[i*3];
     entry.keySum = values[i*3+1];
