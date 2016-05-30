@@ -1,7 +1,7 @@
 #ifndef LOGIC_HPP
 #define LOGIC_HPP
 
-#include "util/iblt.hpp"
+#include "iblt.hpp"
 #include <map>
 
 namespace psync {

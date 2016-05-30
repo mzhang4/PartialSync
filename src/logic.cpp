@@ -1,6 +1,6 @@
 #include "logic.hpp"
-#include "util/murmurhash3.hpp"
-#include "util/parse.hpp"
+#include "murmurhash3.hpp"
+#include "parse.hpp"
 
 namespace psync {
 
