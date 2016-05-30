@@ -14,13 +14,13 @@ uint32_t MurmurHash3(uint32_t nHashSeed, const std::vector<unsigned char>& vData
   const uint32_t c1 = 0xcc9e2d51;
   const uint32_t c2 = 0x1b873593;
 
-  const size_t nblocks = vDataToHash.size() / 4;
+  const std::size_t nblocks = vDataToHash.size() / 4;
 
   //----------
   // body
   const uint32_t * blocks = (const uint32_t *)(&vDataToHash[0] + nblocks*4);
 
-  for(size_t i = -nblocks; i; i++) {
+  for(std::size_t i = -nblocks; i; i++) {
     uint32_t k1 = blocks[i];
 
     k1 *= c1;
