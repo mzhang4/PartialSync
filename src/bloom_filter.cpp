@@ -8,6 +8,7 @@
 #include <iterator>
 #include <limits>
 #include <cstdlib>
+#include <cassert>
 
 namespace psync {
 
@@ -86,14 +87,14 @@ bloom_filter::bloom_filter(const bloom_parameters& p)
   table_size_ = p.optimal_parameters.table_size;
   generate_unique_salt();
   raw_table_size_ = table_size_ / bits_per_char;
-  bit_table_ = new cell_type[static_cast<std::size_t>(raw_table_size_)];
-  std::fill_n(bit_table_,raw_table_size_,0x00);
+  //bit_table_ = new cell_type[static_cast<std::size_t>(raw_table_size_)];
+  bit_table_.resize(static_cast<std::size_t>(raw_table_size_), 0x00);
 }
 
 void
 bloom_filter::clear()
 {
-  std::fill_n(bit_table_,raw_table_size_,0x00);
+  bit_table_.resize(static_cast<std::size_t>(raw_table_size_), 0x00);
   inserted_element_count_ = 0;
 }
 
@@ -127,10 +128,17 @@ bloom_filter::contains(const std::string& key)
   return true;
 }
 
-bloom_filter::cell_type*
+std::vector <bloom_filter::cell_type>
 bloom_filter::table()
 {
   return bit_table_;
+}
+
+void
+bloom_filter::setTable(std::vector <bloom_filter::cell_type> table)
+{
+  assert(table.size() == raw_table_size_);
+  bit_table_ = table;
 }
 
 unsigned int

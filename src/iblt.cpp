@@ -49,6 +49,11 @@ IBLT::IBLT(size_t _expectedNumEntries)
   hashTable.resize(nEntries);
 }
 
+IBLT::IBLT(const IBLT& other)
+{
+    hashTable = other.hashTable;
+}
+
 IBLT::IBLT(size_t _expectedNumEntries, std::vector <uint32_t> values)
 {
   size_t nEntries = _expectedNumEntries + _expectedNumEntries/2;
@@ -148,7 +153,25 @@ IBLT::operator-(const IBLT& other) const
   return result;
 }
 
-std::string 
+bool
+IBLT::operator==(const IBLT& other) const
+{
+  if (this->hashTable.size() != other.hashTable.size())
+    return false;
+
+  int N = this->hashTable.size();
+
+  for (size_t i = 0; i < N; i++) {
+    if (this->hashTable[i].count != other.hashTable[i].count ||
+        this->hashTable[i].keySum != other.hashTable[i].keySum ||
+        this->hashTable[i].keyCheck != other.hashTable[i].keyCheck)
+      return false;
+  }
+
+  return true;
+}
+
+std::string
 IBLT::DumpTable() const
 {
   std::ostringstream result;

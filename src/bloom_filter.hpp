@@ -60,14 +60,13 @@ public:
   bloom_filter();
   bloom_filter(const bloom_parameters& p);
   virtual ~bloom_filter()
-  {
-    delete[] bit_table_;
-  }
+  {}
 
   void clear();
   void insert(const std::string& key);
   bool contains(const std::string& key);
-  cell_type* table();
+  std::vector <cell_type> table();
+  void setTable(std::vector <cell_type> table);
 	unsigned int getTableSize();
 
 private:
@@ -76,9 +75,9 @@ private:
 
 private:
   std::vector<bloom_type> salt_;
-  cell_type*              bit_table_;
+  std::vector <cell_type>             bit_table_;
   unsigned int            salt_count_;
-  unsigned int            table_size_;
+  unsigned int            table_size_; // 8 * raw_table_size;
   unsigned int            raw_table_size_;
   // unsigned int            projected_element_count_;
   unsigned int            inserted_element_count_;

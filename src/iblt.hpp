@@ -23,6 +23,7 @@ class IBLT
 {
 public:
   IBLT(size_t _expectedNumEntries);
+  IBLT(const IBLT& other);
   IBLT(size_t _expectedNumEntries, std::vector <uint32_t> values);
   virtual ~IBLT();
 
@@ -30,6 +31,7 @@ public:
   void erase(uint32_t key);
   bool listEntries(std::set<uint32_t>& positive, std::set<uint32_t>& negative);
   IBLT operator-(const IBLT& other) const;
+  bool operator==(const IBLT& other) const;
 
   std::vector <HashTableEntry>
   getHashTable()
@@ -48,6 +50,8 @@ public:
 
 private:
   void _insert(int plusOrMinus, uint32_t key);
+
+private:
   std::vector<HashTableEntry> hashTable;
 };
 
