@@ -9,6 +9,7 @@
 #include <limits>
 #include <cstdlib>
 #include <cassert>
+#include <iostream>
 
 namespace psync {
 
@@ -78,10 +79,10 @@ bloom_filter::bloom_filter()
 
 bloom_filter::bloom_filter(const bloom_parameters& p)
 : bit_table_(0)
-//, projected_element_count_(p.projected_element_count)
+, projected_element_count_(p.projected_element_count)
 , inserted_element_count_(0)
 , random_seed_((p.random_seed * 0xA5A5A5A5) + 1)
-//, desired_false_positive_probability_(p.false_positive_probability)
+, desired_false_positive_probability_(p.false_positive_probability)
 {
   salt_count_ = p.optimal_parameters.number_of_hashes;
   table_size_ = p.optimal_parameters.table_size;
@@ -114,6 +115,11 @@ bloom_filter::insert(const std::string& key)
 bool
 bloom_filter::contains(const std::string& key)
 {
+  if (projected_element_count_== 1 && desired_false_positive_probability_ == 0.001) {
+    // subscribe all
+    return true;
+  }
+
   std::size_t bit_index = 0;
   std::size_t bit = 0;
 

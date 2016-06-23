@@ -1,11 +1,16 @@
 #include <iostream>
 #include <cstring>
+#include <limits>
 
 #include <ndn-cxx/common.hpp>
 
 #include "logic_repo.hpp"
 #include "murmurhash3.hpp"
 #include "parse.hpp"
+
+#include <boost/date_time/posix_time/posix_time.hpp>
+
+namespace pt = boost::posix_time;
 
 namespace psync {
 
@@ -31,7 +36,9 @@ LogicRepo::LogicRepo(size_t expectedNumEntries,
                              bind(&LogicRepo::onHelloInterest, this, _1, _2),
                              bind(&LogicRepo::onSyncRegisterFailed, this, _1, _2));
 
-  m_face.setInterestFilter(m_syncPrefix,
+  ndn::Name syncName = m_syncPrefix;
+  syncName.append("sync");
+  m_face.setInterestFilter(syncName,
                              bind(&LogicRepo::onSyncInterest, this, _1, _2),
                              bind(&LogicRepo::onSyncRegisterFailed, this, _1, _2));
 }
@@ -73,10 +80,11 @@ LogicRepo::removeSyncNode(std::string prefix)
 
 void
 LogicRepo::publishData(const ndn::Block& content, const ndn::time::milliseconds& freshness, 
-                      std::string& prefix)
+                      std::string prefix)
 {
+  //std::cout << "Comes to publish Data." << std::endl;
   if (m_prefixes.find(prefix) == m_prefixes.end()) {
-    std::cout << "Cannot Publish Data Under an Unknow prefix" << std::endl;
+    //std::cout << "Cannot Publish Data Under an Unknow prefix" << std::endl;
     return;
   }
 
@@ -91,15 +99,25 @@ LogicRepo::publishData(const ndn::Block& content, const ndn::time::milliseconds&
   m_keyChain.sign(*data);
   m_ims.insert(*data);
 
+  pt::ptime current_date_microseconds = pt::microsec_clock::local_time();
+
+  //old hash, should be erased from iblt
   uint32_t hash = m_prefix2hash[prefix + "/" + std::to_string(m_prefixes[prefix])];
   m_prefix2hash.erase(prefix + "/" + std::to_string(m_prefixes[prefix]));
   m_hash2prefix.erase(hash);
+  m_iblt.erase(hash);
+  m_prefixes[prefix]++;
 
+  //std::cout << "Going to insert into iblt" << std::endl;
   std::string prefixWithSeq = prefix + "/" + std::to_string(m_prefixes[prefix]);
   uint32_t newHash = MurmurHash3(N_HASHCHECK, ParseHex(prefixWithSeq));
   m_prefix2hash[prefixWithSeq] = newHash;
   m_hash2prefix[newHash] = prefix;
   m_iblt.insert(newHash);
+
+  std::vector <ndn::Name> prefixToErase;
+  
+  std::cout << "Publish: " << prefix << "/" << newSeq << " " << current_date_microseconds << std::endl;
 
   for (auto pendingInterest : m_pendingEntries) {
     // go through each pendingEntries
@@ -112,7 +130,7 @@ LogicRepo::publishData(const ndn::Block& content, const ndn::time::milliseconds&
       this->sendNack(pendingInterest.first);
       m_pendingEntries.erase(pendingInterest.first);
       m_scheduler.cancelEvent(entry.expirationEvent);
-      return;
+      //return;
     }
 
     if (entry.bf.contains(prefix) || positive.size() + negative.size() >= m_threshold) {
@@ -126,16 +144,29 @@ LogicRepo::publishData(const ndn::Block& content, const ndn::time::milliseconds&
       ndn::shared_ptr<ndn::Data> syncData = ndn::make_shared<ndn::Data>(syncDataName);
       syncData->setContent(reinterpret_cast<const uint8_t*>(syncContent.c_str()), syncContent.length());
       syncData->setFreshnessPeriod(m_syncReplyFreshness);
+      //std::cout << "Comes here" << std::endl;
+      m_keyChain.sign(*syncData);
+      //std::cout << "Send Data back through pending Interest ************************" << std::endl;
       m_face.put(*syncData);
-      m_pendingEntries.erase(pendingInterest.first);
+      //std::cout << "Leaves here" << std::endl;
+
+      //m_pendingEntries.erase(pendingInterest.first);
+      prefixToErase.push_back(pendingInterest.first);
       m_scheduler.cancelEvent(entry.expirationEvent);
     }
   }
+
+  for (auto pte : prefixToErase) {
+    m_pendingEntries.erase(pte);
+  }
+
+  // std::cout << "leave here" << std::endl;
 }
 
 void
 LogicRepo::onInterest(const ndn::Name& prefix, const ndn::Interest& interest)
 {
+  //std::cout << "Comes to get Data. " << std::endl;
   ndn::shared_ptr<const ndn::Data>data = m_ims.find(interest);
   if (static_cast<bool>(data)) {
     m_face.put(*data);
@@ -151,6 +182,9 @@ LogicRepo::onHelloInterest(const ndn::Name& prefix, const ndn::Interest& interes
     content += p.first + " " + std::to_string(p.second) + "\n";
   }
 
+  //std::cout << "Recieve Hello Interest" << std::endl;
+  //std::cout << "Content is: " << content << std::endl;
+
   ndn::shared_ptr<ndn::Data> data = ndn::make_shared<ndn::Data>();
   ndn::Name helloInterestName = prefix;
   appendIBLT(helloInterestName);
@@ -158,53 +192,66 @@ LogicRepo::onHelloInterest(const ndn::Name& prefix, const ndn::Interest& interes
   data->setFreshnessPeriod(m_helloReplyFreshness);
   data->setContent(reinterpret_cast<const uint8_t*>(content.c_str()), content.length());
   data->setCachingPolicy(ndn::lp::LocalControlHeaderFacade::CachingPolicy::NO_CACHE);
-
   m_keyChain.sign(*data);
   m_face.put(*data);
+
+  //std::cout << "Sends out Hello Data: " << data->getName().toUri() << std::endl;
 }
 
 void
 LogicRepo::onSyncInterest(const ndn::Name& prefix, const ndn::Interest& interest)
 {
+  // std::cout << "Call OnSyncInterest" << std::endl;
+  // std::cout << "Recieve Sync Interest." << std::endl;
   // parser BF and IBLT Not finished yet
   ndn::Name interestName = interest.getName();
-  std::string parameters = interestName.getSubName(interestName.size()-3, 1).toUri();
-  ndn::Block bfName = interestName.get(interestName.size()-2).wireEncode();
-  ndn::Block ibltName = interestName.get(interestName.size()-1).wireEncode();
+  std::size_t bfSize = interestName.get(interestName.size()-4).toNumber();
+  ndn::name::Component bfName = interestName.get(interestName.size()-3);
+  //std::cout << bfName.toUri() << std::endl;
+  std::size_t ibltSize = interestName.get(interestName.size()-2).toNumber();
+  ndn::name::Component ibltName = interestName.get(interestName.size()-1);
 
-  std::size_t idx = parameters.find("%");
+  //std::size_t idx = parameters.find("%");
 
   bloom_parameters opt;
-  opt.false_positive_probability = std::stoi(parameters.substr(1, idx-1))/1000.;
-  opt.projected_element_count = std::stoi(parameters.substr(idx+1));
+  opt.projected_element_count = interestName.get(interestName.size()-6).toNumber();
+  opt.false_positive_probability = interestName.get(interestName.size()-5).toNumber()/1000.;
   opt.compute_optimal_parameters();
   bloom_filter bf(opt);
-  bf.setTable(std::vector <uint8_t>(bfName.begin(), bfName.end()));
+  bf.setTable(std::vector <uint8_t>(bfName.begin()+this->getSize(bfSize), bfName.end()));
 
-  std::vector <uint8_t> ibltValues(ibltName.begin(), ibltName.end());
+  std::vector <uint8_t> testTable(bfName.begin(), bfName.end());
+
+  std::vector <uint8_t> ibltValues(ibltName.begin()+this->getSize(ibltSize), ibltName.end());
   std::size_t N = ibltValues.size()/4;
   std::vector <uint32_t> values(N, 0);
 
-  for (int i = 0; i < N; i += 4) {
+  for (int i = 0; i < 4*N; i += 4) {
     uint32_t t = (ibltValues[i+3] << 24) + (ibltValues[i+2] << 16) + (ibltValues[i+1] << 8) + ibltValues[i];
-    values[i/4] = t; 
+    values[i/4] = t;
   }
 
-  IBLT iblt(m_expectedNumEntries, values);
-  
   // get the difference
+  IBLT iblt(m_expectedNumEntries, values);
   IBLT diff = m_iblt - iblt;
   std::set<uint32_t> positive;
   std::set<uint32_t> negative;
+
+  //std::cout << "try to get the difference" << std::endl;
 
   if (!diff.listEntries(positive, negative)) {
       this->sendNack(interest);
       return;
   }
 
+  //std::cout << "The size is: "<< positive.size() + negative.size() << std::endl;
+
+  assert((positive.size() == 1 && negative.size() == 1) || (positive.size() == 0 && negative.size() == 0));
+
   // generate content in Sync reply
   std::string content;
   for (auto hash : positive) {
+    //std::cout << "Comes to check!!!!" << std::endl;
     std::string prefix = m_hash2prefix[hash];
     if (bf.contains(prefix)) {
       // generate data
@@ -215,14 +262,14 @@ LogicRepo::onSyncInterest(const ndn::Name& prefix, const ndn::Interest& interest
   if (positive.size() + negative.size() >= m_threshold || !content.empty()) {
     // send back data
     ndn::shared_ptr<ndn::Data> data = ndn::make_shared<ndn::Data>();
-    ndn::Name syncDataName = prefix;
+    ndn::Name syncDataName = interest.getName();
     appendIBLT(syncDataName);
     data->setName(syncDataName);
     data->setFreshnessPeriod(m_syncReplyFreshness);
     data->setContent(reinterpret_cast<const uint8_t*>(content.c_str()), content.length());
-
     m_keyChain.sign(*data);
     m_face.put(*data);
+    //std::cout << "Going to send Sync Data back!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
     return;
   }
   
@@ -230,7 +277,11 @@ LogicRepo::onSyncInterest(const ndn::Name& prefix, const ndn::Interest& interest
   PendingEntryInfo entry(bf, iblt);
   m_pendingEntries.insert(std::map<ndn::Name, PendingEntryInfo>::value_type(interest.getName(), entry));
   m_pendingEntries.find(interest.getName())->second.expirationEvent = m_scheduler.scheduleEvent(interest.getInterestLifetime(), 
-                                                [=] () { m_pendingEntries.erase(interest.getName()); });
+                                                [=] () { //std::cout << "trying to erase the pending interest." << std::endl;
+                                                  m_pendingEntries.erase(interest.getName()); 
+                                                  });
+
+  //std::cout << "leaves here. " << std::endl;
 }
 
 void
@@ -244,31 +295,69 @@ LogicRepo::appendIBLT(ndn::Name& name)
 {
   std::vector <HashTableEntry> hashTable = m_iblt.getHashTable();
   size_t N = hashTable.size();
-  size_t unitSize = sizeof(HashTableEntry::count) + sizeof(HashTableEntry::keySum) + sizeof(HashTableEntry::keyCheck);
-  size_t tableSize = unitSize/8*N;
-  int k = sizeof(HashTableEntry::count)/sizeof(uint8_t);
+  size_t unitSize = 32*3/8; // hard coding
+  size_t tableSize = unitSize*N;
 
-  uint8_t* table = new uint8_t(tableSize);
+  std::vector <uint8_t> table(tableSize);
 
   for (int i = 0; i < N; i++) {
-    std::memcpy(table+i*3*k, &hashTable[i].count, sizeof(HashTableEntry::count));
-    std::memcpy(table+(i*3+1)*k, &hashTable[i].keySum, sizeof(HashTableEntry::keySum));
-    std::memcpy(table+(i*3+2)*k, &hashTable[i].keyCheck, sizeof(HashTableEntry::keyCheck));
+    // table[i*12],   table[i*12+1], table[i*12+2], table[i*12+3] --> hashTable[i].count
+
+    table[i*12]   = 0xFF & hashTable[i].count;
+    table[i*12+1] = 0xFF & (hashTable[i].count >> 8);
+    table[i*12+2] = 0xFF & (hashTable[i].count >> 16);
+    table[i*12+3] = 0xFF & (hashTable[i].count >> 24);
+
+    // table[i*12+4], table[i*12+5], table[i*12+6], table[i*12+7] --> hashTable[i].keySum
+
+    table[i*12+4] = 0xFF & hashTable[i].keySum;
+    table[i*12+5] = 0xFF & (hashTable[i].keySum >> 8);
+    table[i*12+6] = 0xFF & (hashTable[i].keySum >> 16);
+    table[i*12+7] = 0xFF & (hashTable[i].keySum >> 24);
+
+    // table[i*12+8], table[i*12+9], table[i*12+10], table[i*12+11] --> hashTable[i].keyCheck
+
+    table[i*12+8] = 0xFF & hashTable[i].keyCheck;
+    table[i*12+9] = 0xFF & (hashTable[i].keyCheck >> 8);
+    table[i*12+10] = 0xFF & (hashTable[i].keyCheck >> 16);
+    table[i*12+11] = 0xFF & (hashTable[i].keyCheck >> 24);
   }
 
-  name.append(table, tableSize);
-  delete table;
+  name.appendNumber(table.size());
+  name.append(table.begin(), table.end());
 }
 
 void
 LogicRepo::sendNack(const ndn::Interest interest)
 {
+  //std::cout << "going to send NACK back." << std::endl;
   std::string content = "NACK 0";
   ndn::shared_ptr<ndn::Data> data = ndn::make_shared<ndn::Data>();
   data->setName(interest.getName());
   data->setFreshnessPeriod(m_syncReplyFreshness);
   data->setContent(reinterpret_cast<const uint8_t*>(content.c_str()), content.length());
+  m_keyChain.sign(*data);
   m_face.put(*data);
+}
+
+std::size_t
+LogicRepo::getSize(uint64_t varNumber)
+{
+  std::size_t ans = 1;
+  if (varNumber < 253) {
+    ans += 1;
+  }
+  else if (varNumber <= std::numeric_limits<uint16_t>::max()) {
+    ans += 3;
+  }
+  else if (varNumber <= std::numeric_limits<uint32_t>::max()) {
+    ans += 5;
+  }
+  else {
+    ans += 9;
+  }
+
+  return ans;
 }
 
 }

@@ -54,7 +54,8 @@ class bloom_filter
 {
 protected:
   typedef uint32_t bloom_type;
-  typedef unsigned char cell_type;
+  typedef uint8_t cell_type;
+  typedef std::vector <cell_type>::iterator Iterator;
 
 public:
   bloom_filter();
@@ -68,21 +69,23 @@ public:
   std::vector <cell_type> table();
   void setTable(std::vector <cell_type> table);
 	unsigned int getTableSize();
+  Iterator begin() { return bit_table_.begin(); }
+  Iterator end()   { return bit_table_.end();   }
 
 private:
 	void generate_unique_salt();
   void compute_indices(const bloom_type& hash, std::size_t& bit_index, std::size_t& bit);
 
 private:
-  std::vector<bloom_type> salt_;
+  std::vector <bloom_type> salt_;
   std::vector <cell_type>             bit_table_;
   unsigned int            salt_count_;
   unsigned int            table_size_; // 8 * raw_table_size;
   unsigned int            raw_table_size_;
-  // unsigned int            projected_element_count_;
+  unsigned int            projected_element_count_;
   unsigned int            inserted_element_count_;
   unsigned long long int  random_seed_;
-  // double                  desired_false_positive_probability_;
+  double                  desired_false_positive_probability_;
 };
 
 }

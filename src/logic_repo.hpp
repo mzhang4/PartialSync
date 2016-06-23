@@ -46,7 +46,7 @@ public:
 
   void
   publishData(const ndn::Block& content, const ndn::time::milliseconds& freshness, 
-              std::string& prefix);
+              std::string prefix);
 
 private:
   void
@@ -67,6 +67,9 @@ private:
 
   void
   sendNack(const ndn::Interest interest);
+
+  std::size_t
+  getSize(uint64_t varNumber);
 
 private:
   IBLT m_iblt;

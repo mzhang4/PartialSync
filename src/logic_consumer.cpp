@@ -2,24 +2,33 @@
 
 #include <ndn-cxx/util/time.hpp>
 
+#include <boost/date_time/posix_time/posix_time.hpp>
+
+namespace pt = boost::posix_time;
+
 namespace psync{
 
 LogicConsumer::LogicConsumer(ndn::Name& prefix,
 														 ndn::Face& face,
+														 RecieveHelloCallback& onRecieveHelloData,
 														 UpdateCallback& onUpdate,
-														 unsigned int& count,
-														 double& false_positve)
+														 unsigned int count,
+														 double false_positve)
 : m_syncPrefix(prefix)
 , m_face(face)
+, m_onRecieveHelloData(onRecieveHelloData)
 , m_onUpdate(onUpdate)
 , m_count(count)
 , m_false_positive(false_positve)
+, m_suball(false_positve == 0.001 && m_count == 1)
+, m_helloSent(false)
 {
 	bloom_parameters opt;
   opt.false_positive_probability = m_false_positive;
   opt.projected_element_count = m_count;
   opt.compute_optimal_parameters();
   m_bf = bloom_filter(opt);
+  //std::cout << "Size in constructor: " << m_bf.table().size() << std::endl;
 }
 
 LogicConsumer::~LogicConsumer()
@@ -40,9 +49,10 @@ LogicConsumer::sendHelloInterest()
 	helloInterestName.append("hello");
 
 	ndn::Interest helloInterest(helloInterestName);
- 	helloInterest.setInterestLifetime(ndn::time::milliseconds(1000));
+ 	helloInterest.setInterestLifetime(ndn::time::milliseconds(4000));
   helloInterest.setMustBeFresh(true);
 
+  //std::cout << "Hello Interest Name: " << helloInterest.getName().toUri() << std::endl;
   m_face.expressInterest(helloInterest,
                            bind(&LogicConsumer::onHelloData, this, _1, _2),
                            bind(&LogicConsumer::onHelloTimeout, this, _1));
@@ -51,17 +61,21 @@ LogicConsumer::sendHelloInterest()
 void
 LogicConsumer::sendSyncInterest()
 {
+	//std::cout << "Tries to send Sync Interest" << std::endl;
 	// name last component is the IBF and content should be the prefix with the version numbers
 	assert(m_helloSent);
 	assert(!m_iblt.empty());
 
 	ndn::Name syncInterestName = m_syncPrefix;
+	syncInterestName.append("sync");
 	appendBF(syncInterestName);
 	syncInterestName.append(m_iblt);
 
 	ndn::Interest syncInterest(syncInterestName);
- 	syncInterest.setInterestLifetime(ndn::time::milliseconds(1000));
+ 	syncInterest.setInterestLifetime(ndn::time::milliseconds(4000));
   syncInterest.setMustBeFresh(true);
+
+ // std::cout << "Name is " << syncInterestName.toUri() << std::endl;
 
   m_face.expressInterest(syncInterest,
                            bind(&LogicConsumer::onSyncData, this, _1, _2),
@@ -112,9 +126,13 @@ void
 LogicConsumer::onHelloData(const ndn::Interest& interest, const ndn::Data& data)
 {
 	ndn::Name helloDataName = data.getName();
-	m_iblt = helloDataName.getSubName(helloDataName.size()-1, 1);
+	m_iblt = helloDataName.getSubName(helloDataName.size()-2, 2);
 	std::string content(reinterpret_cast<const char*>(data.getContent().value()),
                         data.getContent().value_size());
+
+  //std::cout << "Name is: " << data.getName().toUri() << std::endl;
+	//std::cout << "Content is: " << content << std::endl;
+
 	std::stringstream ss(content);
 	std::string prefix;
 	uint32_t seq;
@@ -124,14 +142,23 @@ LogicConsumer::onHelloData(const ndn::Interest& interest, const ndn::Data& data)
 		m_ns.push_back(prefix);
 	}
 
+	//std::cout << "Hello Data Recieved" << std::endl;
+
 	m_helloSent = true;
+
+	/*if (m_helloSent) {
+		std::cout << "Set Hello to be true" << std::endl;
+	}*/
+
+	m_onRecieveHelloData();
 }
 
 void
 LogicConsumer::onSyncData(const ndn::Interest& interest, const ndn::Data& data)
 {
+	//std::cout << "Get Sync Data." << std::endl;
 	ndn::Name syncDataName = data.getName();
-	m_iblt = syncDataName.getSubName(syncDataName.size() - 1, 1);
+	m_iblt = syncDataName.getSubName(syncDataName.size()-2, 2);
 
 	std::string content(reinterpret_cast<const char*>(data.getContent().value()),
                         data.getContent().value_size());
@@ -143,6 +170,8 @@ LogicConsumer::onSyncData(const ndn::Interest& interest, const ndn::Data& data)
 
 	while (ss >> prefix >> seq) {
 		if (m_prefixes.find(prefix) == m_prefixes.end() || m_prefixes[prefix] < seq) {
+			pt::ptime current_date_microseconds = pt::microsec_clock::local_time();
+    	std::cout << "Update: "<< prefix << "/" << seq << " " << current_date_microseconds << std::endl;
 			updates.push_back(MissingData(prefix, m_prefixes[prefix], seq));
 			m_prefixes[prefix] = seq;
 		}
@@ -156,24 +185,26 @@ LogicConsumer::onSyncData(const ndn::Interest& interest, const ndn::Data& data)
 void
 LogicConsumer::onHelloTimeout(const ndn::Interest& interest)
 {
-  m_face.expressInterest(interest,
-                           bind(&LogicConsumer::onSyncData, this, _1, _2),
-                           bind(&LogicConsumer::onSyncTimeout, this, _1));
+	this->sendHelloInterest();
 }
 
 void
 LogicConsumer::onSyncTimeout(const ndn::Interest& interest)
 {
-  m_face.expressInterest(interest,
-                           bind(&LogicConsumer::onSyncData, this, _1, _2),
-                           bind(&LogicConsumer::onSyncTimeout, this, _1));
+  this->sendSyncInterest();
 }
 
 void
 LogicConsumer::appendBF(ndn::Name& name)
 {
-	name.append(std::to_string(m_count) + "%" + std::to_string((int)(m_false_positive*1000)));
-	name.append(m_bf.table().begin(), m_bf.table().end());
+	name.appendNumber(m_count);
+	name.appendNumber((int)(m_false_positive*1000));
+	//std::cout << m_bf.table().size() << std::endl;
+	name.appendNumber(m_bf.getTableSize());
+	name.append(m_bf.begin(), m_bf.end());
+	ndn::name::Component comp = name.get(name.size()-1);
+	std::vector <uint8_t> table(comp.begin(), comp.end()); 
+	//std::cout << "Leaves here " << table.size() << std::endl;
 }
 
 void

@@ -4,6 +4,7 @@
 #include <utility>
 #include <map>
 #include <vector>
+#include <functional>
 
 #include <ndn-cxx/common.hpp>
 #include <ndn-cxx/face.hpp>
@@ -26,15 +27,18 @@ struct MissingData
 	uint32_t seq2;
 };
 
-typedef ndn::function<void(const std::vector<MissingData>&)> UpdateCallback;
+typedef std::function<void(const std::vector<MissingData>)> UpdateCallback;
+typedef std::function<void()> RecieveHelloCallback;
 
 class LogicConsumer
 {
+public:
 	LogicConsumer(ndn::Name& prefix,
 								ndn::Face& face,
+								RecieveHelloCallback& onRecieveHelloData,
 								UpdateCallback& onUpdate,
-								unsigned int& count,
-								double& false_postive);
+								unsigned int count,
+								double false_postive);
 
   ~LogicConsumer();
 
@@ -48,6 +52,17 @@ class LogicConsumer
   std::set <std::string> getSL();
   void addSL(std::string s);
   std::vector <std::string> getNS();
+  bool isSub(std::string prefix) {
+  	return m_suball || m_sl.find(prefix) != m_sl.end();
+  }
+
+  void setSeq(std::string prefix, const uint32_t& seq) {
+  	m_prefixes[prefix] = seq;
+  }
+
+  uint32_t getSeq(std::string prefix) {
+  	return m_prefixes[prefix];
+  }
 
 private:
 	void onHelloData(const ndn::Interest& interest, const ndn::Data& data);
@@ -61,9 +76,11 @@ private:
 private:
 	ndn::Name m_syncPrefix;
 	ndn::Face& m_face;
+	RecieveHelloCallback m_onRecieveHelloData;
 	UpdateCallback m_onUpdate;
 	unsigned int m_count;
 	double m_false_positive;
+	bool m_suball;
 	ndn::Name m_iblt;
 	std::map <std::string, uint32_t> m_prefixes;
 	bool m_helloSent;
