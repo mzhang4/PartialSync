@@ -81,12 +81,6 @@ IBLT::~IBLT()
 void 
 IBLT::_insert(int plusOrMinus, uint32_t key)
 {
-  /*if (plusOrMinus == 1) {
-    std::cout << "insert key is:  " << key << std::endl;
-  } else {
-    std::cout << "Minus key is: " << key << std::endl;
-  }*/
-
   std::vector<uint8_t> kvec = ToVec(key);
 
   size_t bucketsPerHash = hashTable.size()/N_HASH;
@@ -115,7 +109,6 @@ IBLT::erase(uint32_t key)
 bool 
 IBLT::listEntries(std::set<uint32_t>& positive, std::set<uint32_t>& negative)
 {
-  //std::cout << "try to list entries." << std::endl;
   IBLT peeled = *this;
 
   size_t nErased = 0;
@@ -136,12 +129,10 @@ IBLT::listEntries(std::set<uint32_t>& positive, std::set<uint32_t>& negative)
     }
   } while (nErased > 0);
 
-  //std::cout << "going to leave list entries." << std::endl;
   // If any buckets for one of the hash functions is not empty,
   // then we didn't peel them all:
   for (size_t i = 0; i < peeled.hashTable.size(); i++) {
     if (peeled.hashTable.at(i).empty() != true) {
-      //std::cout << "Cannot list all the entries in IBLT" << std::endl;
       return false;
     }
   }

@@ -1,7 +1,3 @@
-#include "bloom_filter.hpp"
-#include "parse.hpp"
-#include "murmurhash3.hpp"
-
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
@@ -10,6 +6,10 @@
 #include <cstdlib>
 #include <cassert>
 #include <iostream>
+
+#include "bloom_filter.hpp"
+#include "parse.hpp"
+#include "murmurhash3.hpp"
 
 namespace psync {
 

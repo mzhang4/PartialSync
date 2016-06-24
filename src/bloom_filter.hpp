@@ -8,15 +8,15 @@ namespace psync {
 
 static const std::size_t bits_per_char = 0x08;
 static const unsigned char bit_mask[bits_per_char] = {
-													     0x01,  //00000001
-													     0x02,  //00000010
-													     0x04,  //00000100
-													     0x08,  //00001000
-													     0x10,  //00010000
-													     0x20,  //00100000
-													     0x40,  //01000000
-													     0x80   //10000000
-													   };
+                               0x01,  //00000001
+                               0x02,  //00000010
+                               0x04,  //00000100
+                               0x08,  //00001000
+                               0x10,  //00010000
+                               0x20,  //00100000
+                               0x40,  //01000000
+                               0x80   //10000000
+                             };
 
 struct optimal_parameters_t
 {
@@ -68,12 +68,12 @@ public:
   bool contains(const std::string& key);
   std::vector <cell_type> table();
   void setTable(std::vector <cell_type> table);
-	unsigned int getTableSize();
+  unsigned int getTableSize();
   Iterator begin() { return bit_table_.begin(); }
   Iterator end()   { return bit_table_.end();   }
 
 private:
-	void generate_unique_salt();
+  void generate_unique_salt();
   void compute_indices(const bloom_type& hash, std::size_t& bit_index, std::size_t& bit);
 
 private:
