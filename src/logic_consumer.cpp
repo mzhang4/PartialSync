@@ -48,7 +48,7 @@ LogicConsumer::sendHelloInterest()
   helloInterestName.append("hello");
 
   ndn::Interest helloInterest(helloInterestName);
-  helloInterest.setInterestLifetime(ndn::time::milliseconds(4000));
+  helloInterest.setInterestLifetime(ndn::time::milliseconds(1000));
   helloInterest.setMustBeFresh(true);
 
   m_face.expressInterest(helloInterest,
@@ -69,7 +69,7 @@ LogicConsumer::sendSyncInterest()
   syncInterestName.append(m_iblt);
 
   ndn::Interest syncInterest(syncInterestName);
-  syncInterest.setInterestLifetime(ndn::time::milliseconds(4000));
+  syncInterest.setInterestLifetime(ndn::time::milliseconds(1000));
   syncInterest.setMustBeFresh(true);
 
   m_face.expressInterest(syncInterest,

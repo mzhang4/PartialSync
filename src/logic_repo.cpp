@@ -97,6 +97,9 @@ LogicRepo::publishData(const ndn::Block& content, const ndn::time::milliseconds&
   m_keyChain.sign(*data);
   m_ims.insert(*data);
 
+  pt::ptime current_date_microseconds = pt::microsec_clock::local_time();
+  std::cout << "Update: "<< prefix << "/" << newSeq << " " << current_date_microseconds << std::endl;
+
   this->updateSeq(prefix, m_prefixes[prefix]+1);
 }
 
