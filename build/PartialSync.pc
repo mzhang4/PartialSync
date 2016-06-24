@@ -1,0 +1,10 @@
+prefix=/usr/local
+libdir=/usr/local/lib
+includedir=/usr/local/include/PartialSync
+
+Name: PartialSync
+Description: PartialSync library
+Version: 0.0
+Libs: -L${libdir} -lPartialSync
+Cflags: -I${includedir}
+

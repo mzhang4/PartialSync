@@ -136,6 +136,7 @@ LogicRepo::onSyncInterest(const ndn::Name& prefix, const ndn::Interest& interest
   ndn::Name interestName = interest.getName();
   std::size_t bfSize = interestName.get(interestName.size()-4).toNumber();
   ndn::name::Component bfName = interestName.get(interestName.size()-3);
+  std::size_t ibltSize = interestName.get(interestName.size()-2).toNumber();
   ndn::name::Component ibltName = interestName.get(interestName.size()-1);
 
   bloom_parameters opt;
@@ -144,9 +145,7 @@ LogicRepo::onSyncInterest(const ndn::Name& prefix, const ndn::Interest& interest
   opt.compute_optimal_parameters();
   bloom_filter bf(opt);
   bf.setTable(std::vector <uint8_t>(bfName.begin()+this->getSize(bfSize), bfName.end()));
-
   std::vector <uint8_t> testTable(bfName.begin(), bfName.end());
-
   std::vector <uint8_t> ibltValues(ibltName.begin()+this->getSize(ibltSize), ibltName.end());
   std::size_t N = ibltValues.size()/4;
   std::vector <uint32_t> values(N, 0);
