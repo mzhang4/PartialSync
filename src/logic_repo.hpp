@@ -48,9 +48,6 @@ public:
   publishData(const ndn::Block& content, const ndn::time::milliseconds& freshness, 
               std::string prefix);
 
-  void
-  updateSeq(std::string prefix, uint32_t seq);
-
 private:
   void
   onInterest(const ndn::Name& prefix, const ndn::Interest& interest);
@@ -63,6 +60,9 @@ private:
 
   void
   onSyncRegisterFailed(const ndn::Name& prefix, const std::string& msg);
+
+  void
+  updateSeq(std::string prefix, uint32_t seq);
 
 private:
   void
