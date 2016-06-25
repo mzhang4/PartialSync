@@ -98,7 +98,7 @@ LogicRepo::publishData(const ndn::Block& content, const ndn::time::milliseconds&
   m_ims.insert(*data);
 
   pt::ptime current_date_microseconds = pt::microsec_clock::local_time();
-  std::cout << "Update: "<< prefix << "/" << newSeq << " " << current_date_microseconds << std::endl;
+  std::cout << "Publish: "<< prefix << "/" << newSeq << " " << current_date_microseconds << std::endl;
 
   this->updateSeq(prefix, m_prefixes[prefix]+1);
 }
@@ -167,11 +167,12 @@ LogicRepo::onSyncInterest(const ndn::Name& prefix, const ndn::Interest& interest
   std::set<uint32_t> negative;
 
   if (!diff.listEntries(positive, negative)) {
+      std::cout << "Send Nack back" << std::endl;
       this->sendNack(interest);
       return;
   }
 
-  assert((positive.size() == 1 && negative.size() == 1) || (positive.size() == 0 && negative.size() == 0));
+  //assert((positive.size() == 1 && negative.size() == 1) || (positive.size() == 0 && negative.size() == 0));
 
   // generate content in Sync reply
   std::string content;
@@ -179,7 +180,7 @@ LogicRepo::onSyncInterest(const ndn::Name& prefix, const ndn::Interest& interest
     std::string prefix = m_hash2prefix[hash];
     if (bf.contains(prefix)) {
       // generate data
-      content += prefix + " " + std::to_string(m_prefixes[prefix]);
+      content += prefix + " " + std::to_string(m_prefixes[prefix]) + "\n";
     }
   }
 
@@ -291,6 +292,9 @@ LogicRepo::updateSeq(std::string prefix, uint32_t seq)
     m_iblt.erase(hash);
   }
 
+  if (m_prefixes[prefix] >= seq)
+    return;
+
   m_prefixes[prefix] = seq;
 
   std::string prefixWithSeq = prefix + "/" + std::to_string(m_prefixes[prefix]);
@@ -312,6 +316,7 @@ LogicRepo::updateSeq(std::string prefix, uint32_t seq)
       this->sendNack(pendingInterest.first);
       m_pendingEntries.erase(pendingInterest.first);
       m_scheduler.cancelEvent(entry.expirationEvent);
+      continue;
       //return;
     }
 

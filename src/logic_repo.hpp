@@ -47,6 +47,14 @@ public:
   void
   publishData(const ndn::Block& content, const ndn::time::milliseconds& freshness, 
               std::string prefix);
+  
+  void
+  updateSeq(std::string prefix, uint32_t seq);
+
+  uint32_t
+  getSeq(std::string prefix) {
+    return m_prefixes[prefix];
+  }
 
 private:
   void
@@ -60,9 +68,6 @@ private:
 
   void
   onSyncRegisterFailed(const ndn::Name& prefix, const std::string& msg);
-
-  void
-  updateSeq(std::string prefix, uint32_t seq);
 
 private:
   void

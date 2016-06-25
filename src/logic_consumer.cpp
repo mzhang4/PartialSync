@@ -155,14 +155,13 @@ LogicConsumer::onSyncData(const ndn::Interest& interest, const ndn::Data& data)
 
   while (ss >> prefix >> seq) {
     if (m_prefixes.find(prefix) == m_prefixes.end() || m_prefixes[prefix] < seq) {
-      pt::ptime current_date_microseconds = pt::microsec_clock::local_time();
-      std::cout << "Update: "<< prefix << "/" << seq << " " << current_date_microseconds << std::endl;
       updates.push_back(MissingData(prefix, m_prefixes[prefix], seq));
       m_prefixes[prefix] = seq;
     }
   }
 
-  m_onUpdate(updates);
+  if (!updates.empty())
+    m_onUpdate(updates);
 
   this->sendSyncInterest();
 }
