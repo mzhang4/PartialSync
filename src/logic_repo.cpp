@@ -53,11 +53,6 @@ LogicRepo::addSyncNode(std::string prefix)
 {
   if (m_prefixes.find(prefix) == m_prefixes.end())
     m_prefixes[prefix] = 0; 
-  std::string prefixWithSeq = prefix + "/" + std::to_string(m_prefixes[prefix]);
-  uint32_t hash = MurmurHash3(N_HASHCHECK, ParseHex(prefixWithSeq));
-  m_prefix2hash[prefixWithSeq] = hash;
-  m_hash2prefix[hash] = prefix;
-  m_iblt.insert(hash);
 
   m_face.setInterestFilter(prefix,
                            bind(&LogicRepo::onInterest, this, _1, _2),
@@ -285,18 +280,18 @@ LogicRepo::getSize(uint64_t varNumber)
 void
 LogicRepo::updateSeq(std::string prefix, uint32_t seq)
 {
-  if (m_prefixes.find(prefix) != m_prefixes.end()) {
+  if (m_prefixes[prefix] >= seq) {
+    return;
+  }
+
+  if (m_prefixes.find(prefix) != m_prefixes.end() && m_prefixes[prefix] != 0) {
     uint32_t hash = m_prefix2hash[prefix + "/" + std::to_string(m_prefixes[prefix])];
     m_prefix2hash.erase(prefix + "/" + std::to_string(m_prefixes[prefix]));
     m_hash2prefix.erase(hash);
     m_iblt.erase(hash);
   }
 
-  if (m_prefixes[prefix] >= seq)
-    return;
-
   m_prefixes[prefix] = seq;
-
   std::string prefixWithSeq = prefix + "/" + std::to_string(m_prefixes[prefix]);
   uint32_t newHash = MurmurHash3(N_HASHCHECK, ParseHex(prefixWithSeq));
   m_prefix2hash[prefixWithSeq] = newHash;
